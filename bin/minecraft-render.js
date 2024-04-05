@@ -29,7 +29,7 @@ async function Main() {
   Logger.level = options.verbose;
 
   const minecraft = Minecraft.open(path.resolve(program.args[0]));
-  const blocks = filterByRegex(options.filter, await minecraft.getBlockList());
+  const blocks = await minecraft.getBlockList(options.filter);
 
   let i = 0;
   const folder = path.resolve(program.args[1] || 'output');
@@ -47,20 +47,31 @@ async function Main() {
     animation: options.animation
   };
 
-  for await (const block of minecraft.render(blocks, rendererOptions)) {
-    const j = (++i).toString().padStart(padSize, '0');
+  const rotations = [
+    ['west', [0,0,0] ],
+    ['up', [90,0,0] ],
+    ['east', [180,0,180] ],
+    ['down', [270,0,0] ],
+    ['south', [90,90,270] ],
+    ['north', [90,270,0] ]
+  ]
+  
+  for (const thisRotation of rotations) {
+    for await (const block of minecraft.render(blocks, rendererOptions, thisRotation[1])) {
+      const j = (++i).toString().padStart(padSize, '0');
 
-    if (!block.buffer) {
-      console.log(`[${j} / ${totalBlocks}] ${block.blockName} skipped due to "${block.skip}"`);
-      continue;
+      if (!block.buffer) {
+        console.log(`[${j} / ${totalBlocks}] ${block.blockName} skipped due to "${block.skip}"`);
+        continue;
+      }
+
+      const rotationName = '_' + thisRotation[0];
+      const filePath = path.join(folder, block.blockName + rotationName + '.png');
+      await fs.promises.writeFile(filePath, block.buffer);
+
+      console.log(`[${j} / ${totalBlocks}] ${block.blockName} rendered to ${filePath}`);
     }
-
-    const filePath = path.join(folder, block.blockName + '.png');
-    await fs.promises.writeFile(filePath, block.buffer);
-
-    console.log(`[${j} / ${totalBlocks}] ${block.blockName} rendered to ${filePath}`);
   }
-
   console.log(`Rendering completed! "${folder}"`);
 }
 

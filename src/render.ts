@@ -31,11 +31,7 @@ export async function prepareRenderer({ width = 1000, height = 1000, distance = 
   const aspect = width / height;
   const camera = new THREE.OrthographicCamera(- distance * aspect, distance * aspect, distance, - distance, 0.01, 20000);
 
-  const light = new THREE.DirectionalLight(0xFFFFFF, 1.2);
-  light.position.set(-15, 30, -25); // cube directions x => negative:bottom right, y => positive:top, z => negative:bottom left
-  scene.add(light);
-
-  Logger.trace(() => `Light added to scene`);
+  scene.add(new THREE.AmbientLight(0xFFFFFF, 1));
 
   if (plane) {
     const origin = new THREE.Vector3(0, 0, 0);
@@ -73,12 +69,18 @@ export async function destroyRenderer(renderer: Renderer) {
 }
 
 
-export async function render(minecraft: Minecraft, block: BlockModel): Promise<BlockModel & { buffer: Buffer, skip?: string }> {
+export async function render(minecraft: Minecraft, block: BlockModel, objectRotation?: number[]): Promise<BlockModel & { buffer: Buffer, skip?: string }> {
   const { canvas, renderer, scene, camera, options } = minecraft.getRenderer()!;
   const resultBlock: BlockModel & { buffer: Buffer, skip?: string } = block as any;
 
   const gui = block.display?.gui;
+  objectRotation = objectRotation ?? [0, 0, 0];
+  objectRotation = objectRotation.map(x => x * THREE.MathUtils.DEG2RAD);
 
+  // block's values for display.gui are
+  //  "rotation": [ 30, 225, 0 ],
+  //  "translation": [ 0, 0, 0],
+  //  "scale":[ 0.625, 0.625, 0.625 ]
   if (!gui || !block.elements || !block.textures) {
     resultBlock.skip = !gui ? 'no gui' : (!block.elements ? 'no element' : 'no texture');
     return resultBlock;
@@ -139,13 +141,15 @@ export async function render(minecraft: Minecraft, block: BlockModel): Promise<B
         Logger.trace(() => `Element[${i}] rotation applied`);
       }
 
+      cube.rotation.fromArray(objectRotation);
       cube.renderOrder = ++i;
 
       scene.add(cube);
       clean.push(cube);
     }
 
-    const rotation = new THREE.Vector3(...gui.rotation).add(new THREE.Vector3(195, -90, -45));
+    // gui rotation defaults to 30, 225, 0 so this becomes 225, 135, 45
+    const rotation = new THREE.Vector3(...gui.rotation).add(new THREE.Vector3(195, -90, 45));
     camera.position.set(...rotation.toArray().map(x => Math.sin(x * THREE.MathUtils.DEG2RAD) * 16) as [number, number, number]);
     camera.lookAt(0, 0, 0);
     camera.position.add(new THREE.Vector3(...gui.translation));

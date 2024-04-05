@@ -3,6 +3,7 @@ import { Jar } from "./utils/jar";
 import type { AnimationMeta, BlockModel, Renderer, RendererOptions } from "./utils/types";
 //@ts-ignore
 import * as deepAssign from 'assign-deep';
+import { Logger } from './utils/logger';
 
 export class Minecraft {
   protected jar: Jar
@@ -21,14 +22,30 @@ export class Minecraft {
     return new Minecraft(file);
   }
 
-  async getBlockNameList(): Promise<string[]> {
+  
+  
+  async getBlockNameList(pattern: string): Promise<string[]> {
+    const regex = new RegExp(pattern);
     return (await this.jar.entries('assets/minecraft/models/block'))
       .filter(entry => entry.name.endsWith(".json"))
+      .filter(entry => regex.test(entry.name))
       .map(entry => entry.name.slice('assets/minecraft/models/block/'.length, -('.json'.length)));
   }
 
-  async getBlockList(): Promise<BlockModel[]> {
-    return await Promise.all((await this.getBlockNameList()).map(block => this.getModel(block)));
+  async getBlockList(pattern: string): Promise<BlockModel[]> {
+    return await Promise.all(
+      (await this.getBlockNameList(pattern))
+      .map(block => this.getModel(block))
+      .map(block => this.loadBaseBlock(block)));
+  }
+
+  async loadBaseBlock(block: Promise<BlockModel>): Promise<BlockModel> {
+    const model = await block;
+    if (model.parents) {
+      return deepAssign({}, await this.getModel('block/block'), model);
+    }
+
+    return model;
   }
 
   async getModelFile<T = BlockModel>(name = 'block/block'): Promise<T> {
@@ -86,12 +103,12 @@ export class Minecraft {
     }
   }
 
-  async *render(blocks: BlockModel[], options?: RendererOptions) {
+  async *render(blocks: BlockModel[], options?: RendererOptions, rotation?: number[]) {
     try {
       await this.prepareRenderEnvironment(options);
 
       for (const block of blocks) {
-        yield await render(this, block);
+        yield await render(this, block, rotation);
       }
     } finally {
       await this.cleanupRenderEnvironment();

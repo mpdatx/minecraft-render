@@ -90,6 +90,10 @@ Current test configuration is capable of downloading jar files from mojang serve
 npm test
 ```
 
+### Rebuilding
+
+Use `npx watch "npm run build" src bin`
+
 ### Headless render and CI
 
 If you are automating generation process on github or similar CI environments, make sure you configured display server. `xvfb` can be used for this purpose.

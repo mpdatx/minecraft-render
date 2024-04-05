@@ -13,7 +13,7 @@ export class RenderTest {
 
   @Spec(180000)
   async renderAll() {
-    const blocks = await this.minecraftTest.minecraft.getBlockList();
+    const blocks = await this.minecraftTest.minecraft.getBlockList("");
 
     const renderCandidates = pickBlocks(blocks);
 
