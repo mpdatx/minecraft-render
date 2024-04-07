@@ -1,6 +1,6 @@
-[![Rendered image](https://raw.githubusercontent.com/co3moz/minecraft-render/master/docs/soul_campfire_small.png)](https://github.com/co3moz/minecraft-render/blob/master/docs/soul_campfire.png)
+Fork of minecraft-render to add rendering of all 6 rotations of a block. 
 
-minecraft-render
+Original README below:
 =======================
 
 
@@ -68,7 +68,7 @@ import fs from 'fs';
 
 async function main() {
   const minecraft = Minecraft.open('./minecraft-version.1.17.1.jar');
-  const blocks = await minecraft.getBlockList();
+  const blocks = await minecraft.getBlockList("");
 
   for await (const block of minecraft.render(blocks)) {
     if (!block.buffer) {
