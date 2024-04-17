@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
-const program = require('commander');
+const { Command, Option } = require('commander');
 const path = require('path');
 const fs = require('fs');
 const package = require('../package.json');
 const mkdirp = require('mkdirp');
 const { Minecraft, Logger } = require('../dist');
 
+const program = new Command();
 program
   .usage('<jar> [output]')
   .option('-w, --width [width]', 'output image width', 1000)
@@ -15,6 +16,7 @@ program
   .option('-v, --verbose', 'increases logging level', (v, p) => typeof v != 'undefined' ? v : (p + 1), Logger.categories.info)
   .option('-p, --plane', 'debugging plane and axis', 0)
   .option('-A, --no-animation', 'disables apng generation')
+  .addOption(new Option('-r, --rotation [directions...]', 'specific rotations to render').choices(['west', 'up', 'east', 'down', 'south', 'north']))
   .option('-f, --filter <regex>', 'regex pattern to filter blocks by name')
   .version(package.version)
   .parse(process.argv);
@@ -56,8 +58,11 @@ async function Main() {
     ['north', [90,270,0] ]
   ]
   
-  for (const thisRotation of rotations) {
-    for await (const block of minecraft.render(blocks, rendererOptions, thisRotation[1])) {
+  for (const [direction, angle] of rotations) {
+    if (options.rotation && !options.rotation.includes(direction)) {
+      continue;
+    }
+    for await (const block of minecraft.render(blocks, rendererOptions, angle)) {
       const j = (++i).toString().padStart(padSize, '0');
 
       if (!block.buffer) {
@@ -65,11 +70,11 @@ async function Main() {
         continue;
       }
 
-      const rotationName = '_' + thisRotation[0];
+      const rotationName = '_' + direction;
       const filePath = path.join(folder, block.blockName + rotationName + '.png');
       await fs.promises.writeFile(filePath, block.buffer);
 
-      console.log(`[${j} / ${totalBlocks}] ${block.blockName} rendered to ${filePath}`);
+      console.log(`[${j} / ${totalBlocks}] ${block.blockName}:${direction} rendered to ${filePath}`);
     }
   }
   console.log(`Rendering completed! "${folder}"`);
